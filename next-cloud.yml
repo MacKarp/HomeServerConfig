@@ -1,0 +1,62 @@
+﻿version: '3'
+
+services:
+  db:
+    image: postgres:13.5-alpine
+    restart: always
+    volumes:
+      - nextcloud_db:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    env_file:
+      - db.env
+    container_name: nextcloud_postgred_db
+
+  redis:
+    image: redis:alpine
+    restart: always
+    container_name: nextcloud_redis
+
+  app:
+    build:
+      context: ./
+      dockerfile: nextcloud_dockerfile
+    restart: always
+    ports:
+      - 80:80
+    volumes:
+      - nextcloud:/var/www/html
+    environment:
+      - POSTGRES_HOST=db
+      - REDIS_HOST=redis
+    env_file:
+      - db.env
+    depends_on:
+      - db
+      - redis
+    container_name: nextcloud
+
+  cron:
+    image: nextcloud:apache
+    restart: always
+    volumes:
+      - nextcloud:/var/www/html
+    entrypoint: /cron.sh
+    depends_on:
+      - db
+      - redis
+    container_name: nextcloud_cron
+
+  collabora:
+    image: collabora/code
+    restart: always
+    ports:
+      - 81:9980
+    env_file:
+      - collabora.env
+    privileged: true
+    container_name: nextcloud_collabora
+
+volumes:
+  nextcloud_db:
+  nextcloud:
